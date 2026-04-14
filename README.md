@@ -182,6 +182,6 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 👤 Author
-Your Name
-GitHub: @YOUR_USERNAME
+Mitch Andrew Palang
+GitHub: DrewLearn11
 <div align="center"> Made with ❤️ using Flutter </div>
