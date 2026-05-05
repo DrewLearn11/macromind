@@ -303,50 +303,91 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 20),
 
           // Budget label below the ring
-          Text(
-            _goal == null
-                ? 'No goal set'
-                : 'Daily Budget: ${_goal!.dailyCalorieBudget.toStringAsFixed(0)} kcal',
-            style: const TextStyle(
-              fontSize: 15,
-              color: Colors.grey,
-              fontWeight: FontWeight.w500,
+Column(
+  children: [
+    Text(
+      _goal == null
+          ? 'No goal set'
+          : 'Daily Budget: ${_goal!.dailyCalorieBudget.toStringAsFixed(0)} kcal',
+      style: const TextStyle(
+        fontSize: 15,
+        color: Colors.grey,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+    // Show warning if budget is too low
+    if (_goal != null && _goal!.dailyCalorieBudget < 500)
+      Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.orange.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.orange.shade200),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.warning_amber_rounded,
+                color: Colors.orange, size: 14),
+            SizedBox(width: 4),
+            Text(
+              'Goal too aggressive — extend timeline!',
+              style: TextStyle(
+                  color: Colors.orange,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500),
             ),
-          ),
+          ],
+        ),
+      ),
+  ],
+),
         ],
       ),
     );
   }
 
   // Row of 3 stat boxes: Consumed, Remaining, Burned
-  Widget _buildStatsRow() {
-    return Row(
-      children: [
-        _buildStatBox(
-          label: 'Consumed',
-          value: '${_totalCaloriesToday.toStringAsFixed(0)}',
-          unit: 'kcal',
-          color: const Color(0xFF00C896),
-        ),
-        const SizedBox(width: 12),
-        _buildStatBox(
-          label: 'Remaining',
-          value: '${_remainingCalories.toStringAsFixed(0)}',
-          unit: 'kcal',
-          color: _remainingCalories >= 0 ? Colors.blue : Colors.red,
-        ),
-        const SizedBox(width: 12),
-        _buildStatBox(
-          label: 'Budget',
-          value: _goal != null
-              ? '${_goal!.dailyCalorieBudget.toStringAsFixed(0)}'
-              : '--',
-          unit: 'kcal',
-          color: Colors.orange,
-        ),
-      ],
-    );
-  }
+Widget _buildStatsRow() {
+  return Row(
+    children: [
+      _buildStatBox(
+        label: 'Consumed',
+        value: '${_totalCaloriesToday.toStringAsFixed(0)}',
+        unit: 'kcal',
+        color: const Color(0xFF00C896),
+      ),
+      const SizedBox(width: 12),
+      _buildStatBox(
+        label: 'Remaining',
+        value: '${_remainingCalories.toStringAsFixed(0)}',
+        unit: 'kcal',
+        // Green if positive, red if negative
+        color: _remainingCalories >= 0
+            ? const Color(0xFF00C896)
+            : Colors.red,
+      ),
+      const SizedBox(width: 12),
+      _buildStatBox(
+        label: 'Budget',
+        value: _goal != null
+            ? '${_goal!.dailyCalorieBudget.toStringAsFixed(0)}'
+            : '--',
+        unit: 'kcal',
+        // Green if healthy, orange if moderate, red if too low
+        color: _goal == null
+            ? Colors.grey
+            : _goal!.dailyCalorieBudget >= 1200
+                ? const Color(0xFF00C896)
+                : _goal!.dailyCalorieBudget >= 800
+                    ? Colors.orange
+                    : Colors.red,
+      ),
+    ],
+  );
+}
 
   // A single stat box widget
   Widget _buildStatBox({
