@@ -23,6 +23,7 @@ class _GoalSettingsScreenState extends State<GoalSettingsScreen> {
   int _selectedTimelineDays = 30;
   bool _isLoading = true;
   bool _isSaving = false;
+  UserGoal? _goal;
 
   final List<Map<String, dynamic>> _timelineOptions = [
     {'label': '1 Week',   'days': 7},
@@ -47,21 +48,21 @@ class _GoalSettingsScreenState extends State<GoalSettingsScreen> {
   }
 
   // Load the saved goal and pre-fill the form fields
-  Future<void> _loadExistingGoal() async {
-    final UserGoal? goal = await StorageService.loadGoal();
+Future<void> _loadExistingGoal() async {
+  final UserGoal? goal = await StorageService.loadGoal();
 
+  setState(() {
+    _goal = goal; // ← add this line
     if (goal != null) {
-      // Pre-fill fields with existing values
-      // ".toString()" converts a number to a String for the text field
       _currentWeightController.text = goal.currentWeight.toString();
       _goalWeightController.text = goal.goalWeight.toString();
       _maintenanceCaloriesController.text =
           goal.maintenanceCalories.toString();
       _selectedTimelineDays = goal.timelineInDays;
     }
-
-    setState(() => _isLoading = false);
-  }
+    _isLoading = false;
+  });
+}
 
   // Save the updated goal
   Future<void> _saveGoal() async {
@@ -69,13 +70,17 @@ class _GoalSettingsScreenState extends State<GoalSettingsScreen> {
 
     setState(() => _isSaving = true);
 
-    final UserGoal updatedGoal = UserGoal(
-      currentWeight: double.parse(_currentWeightController.text.trim()),
-      goalWeight: double.parse(_goalWeightController.text.trim()),
-      timelineInDays: _selectedTimelineDays,
-      maintenanceCalories:
-          double.parse(_maintenanceCaloriesController.text.trim()),
-    );
+final UserGoal updatedGoal = UserGoal(
+  currentWeight: double.parse(_currentWeightController.text.trim()),
+  goalWeight: double.parse(_goalWeightController.text.trim()),
+  height: _goal?.height ?? 170.0,
+  age: _goal?.age ?? 25,
+  sex: _goal?.sex ?? 'male',
+  activityLevel: _goal?.activityLevel ?? 'sedentary',
+  timelineInDays: _selectedTimelineDays,
+  maintenanceCalories: double.parse(_maintenanceCaloriesController.text.trim()),
+  recommendedCalories: double.parse(_maintenanceCaloriesController.text.trim()),
+);
 
     await StorageService.saveGoal(updatedGoal);
 

@@ -286,6 +286,29 @@ static Future<String?> login(String email, String password) async {
     return email != null;
   }
 
+  // GOOGLE SIGN IN — Register or Login with Google
+static Future<String?> signInWithGoogle(String email) async {
+  final List<AppUser> users = await _loadUsers();
+
+  // Check if user already exists
+  final bool exists = users.any(
+    (u) => u.email.toLowerCase() == email.toLowerCase(),
+  );
+
+  if (!exists) {
+    // Auto register if first time
+    users.add(AppUser(
+      email: email.toLowerCase(),
+      password: 'GOOGLE_AUTH', // placeholder — Google handles auth
+    ));
+    await _saveUsers(users);
+  }
+
+  // Log them in
+  await _setLoggedInEmail(email.toLowerCase());
+  return null; // null = success
+}
+
 }
 
 

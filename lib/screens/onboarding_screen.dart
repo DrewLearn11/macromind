@@ -76,13 +76,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final double maintenanceCalories =
         double.parse(_maintenanceCaloriesController.text.trim());
 
-    // Create a UserGoal object with the entered values
-    final UserGoal goal = UserGoal(
-      currentWeight: currentWeight,
-      goalWeight: goalWeight,
-      timelineInDays: _selectedTimelineDays,
-      maintenanceCalories: maintenanceCalories,
-    );
+final UserGoal goal = UserGoal(
+  currentWeight: currentWeight,
+  goalWeight: goalWeight,
+  height: 170.0,        // default
+  age: 25,              // default
+  sex: 'male',          // default
+  activityLevel: 'sedentary', // default
+  timelineInDays: _selectedTimelineDays,
+  maintenanceCalories: maintenanceCalories,
+  recommendedCalories: maintenanceCalories, // same as maintenance
+);
 
     // Save the goal to SharedPreferences
     await StorageService.saveGoal(goal);

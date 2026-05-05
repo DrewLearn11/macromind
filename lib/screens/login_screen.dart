@@ -1,13 +1,10 @@
-// login_screen.dart
-// This is the first screen the user sees.
-// They can log in with their email and password,
-// or navigate to the Register screen.
-
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
+import '../services/google_auth_service.dart';
 import 'register_screen.dart';
 import 'dashboard_screen.dart';
 import 'onboarding_screen.dart';
+import 'goal_setup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,8 +19,9 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
-  bool _obscurePassword = true; // Controls show/hide password
-  String? _errorMessage;        // Holds error message to show user
+  bool _isGoogleLoading = false;
+  bool _obscurePassword = true;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -33,14 +31,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    // Clear previous error
     setState(() => _errorMessage = null);
-
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
-    // Attempt login
     final String? error = await StorageService.login(
       _emailController.text,
       _passwordController.text,
@@ -50,22 +44,56 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (error != null) {
-      // Show error message
       setState(() => _errorMessage = error);
       return;
     }
 
-    // Check if user has set up their goal before
     final goal = await StorageService.loadGoal();
-
     if (!mounted) return;
 
-    // Navigate based on whether goal exists
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) =>
-            goal != null ? const DashboardScreen() : const OnboardingScreen(),
+            goal != null ? const DashboardScreen() : const GoalSetupScreen(),
+      ),
+    );
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _errorMessage = null;
+      _isGoogleLoading = true;
+    });
+
+    // Trigger Google Sign-In
+    final Map<String, String>? userData = await GoogleAuthService.signIn();
+
+    if (!mounted) return;
+
+    if (userData == null) {
+      setState(() {
+        _isGoogleLoading = false;
+        _errorMessage = 'Google Sign-In was cancelled or failed.';
+      });
+      return;
+    }
+
+    // Save to local storage
+    await StorageService.signInWithGoogle(userData['email']!);
+
+    if (!mounted) return;
+    setState(() => _isGoogleLoading = false);
+
+    // Check if goal exists
+    final goal = await StorageService.loadGoal();
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            goal != null ? const DashboardScreen() : const GoalSetupScreen(),
       ),
     );
   }
@@ -91,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF00C896).withOpacity(0.1),
+                          color: const Color(0xFF00C896).withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Text(
@@ -109,13 +137,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'Eat with Purpose.',
+                        'Track your calories, reach your goal.',
                         style: TextStyle(color: Colors.grey, fontSize: 14),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 40),
 
                 // ── Error Message ───────────────────────
                 if (_errorMessage != null)
@@ -144,25 +172,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                 // ── Email Field ─────────────────────────
-                const Text(
-                  'Email',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
+                const Text('Email',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  // "autocorrect: false" prevents autocorrect on email field
                   autocorrect: false,
                   decoration: _inputDecoration(
-                    'e.g. john@email.com',
-                    Icons.email_outlined,
-                  ),
+                      'e.g. john@email.com', Icons.email_outlined),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter your email';
                     }
-                    // Basic email format check using "contains"
                     if (!value.contains('@') || !value.contains('.')) {
                       return 'Please enter a valid email';
                     }
@@ -172,20 +194,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 20),
 
                 // ── Password Field ──────────────────────
-                const Text(
-                  'Password',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
+                const Text('Password',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _passwordController,
-                  // "obscureText" hides the password characters
                   obscureText: _obscurePassword,
-                  decoration: _inputDecoration(
-                    'Enter your password',
-                    Icons.lock_outline,
-                  ).copyWith(
-                    // Eye icon to toggle show/hide password
+                  decoration:
+                      _inputDecoration('Enter your password', Icons.lock_outline)
+                          .copyWith(
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
@@ -193,9 +210,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             : Icons.visibility_off_outlined,
                         color: Colors.grey,
                       ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
                   validator: (value) {
@@ -205,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
 
                 // ── Login Button ────────────────────────
                 SizedBox(
@@ -225,13 +241,95 @@ class _LoginScreenState extends State<LoginScreen> {
                         : const Text(
                             'Log In',
                             style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                                fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // ── Divider ─────────────────────────────
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: Colors.grey.shade300)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'OR',
+                        style: TextStyle(
+                            color: Colors.grey.shade500, fontSize: 13),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: Colors.grey.shade300)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // ── Google Sign-In Button ───────────────
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: OutlinedButton(
+                    onPressed: _isGoogleLoading ? null : _signInWithGoogle,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.grey.shade300),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: _isGoogleLoading
+                        ? const CircularProgressIndicator(
+                            color: Color(0xFF00C896))
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Google G logo colors
+                              RichText(
+                                text: const TextSpan(
+                                  style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold),
+                                  children: [
+                                    TextSpan(
+                                        text: 'G',
+                                        style: TextStyle(
+                                            color: Color(0xFF4285F4))),
+                                    TextSpan(
+                                        text: 'o',
+                                        style: TextStyle(
+                                            color: Color(0xFFEA4335))),
+                                    TextSpan(
+                                        text: 'o',
+                                        style: TextStyle(
+                                            color: Color(0xFFFBBC05))),
+                                    TextSpan(
+                                        text: 'g',
+                                        style: TextStyle(
+                                            color: Color(0xFF4285F4))),
+                                    TextSpan(
+                                        text: 'l',
+                                        style: TextStyle(
+                                            color: Color(0xFF34A853))),
+                                    TextSpan(
+                                        text: 'e',
+                                        style: TextStyle(
+                                            color: Color(0xFFEA4335))),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Continue with Google',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 24),
 
                 // ── Register Link ───────────────────────
                 Center(
