@@ -8,6 +8,7 @@ import '../models/user_goal.dart';
 import '../models/weight_log.dart';
 import '../services/storage_service.dart';
 import 'dashboard_screen.dart';
+import 'goal_setup_screen.dart';
 
 class AIRecommendationScreen extends StatelessWidget {
   final double currentWeight;
@@ -35,33 +36,85 @@ class AIRecommendationScreen extends StatelessWidget {
     required this.aiResult,
   });
 
-  Future<void> _saveAndContinue(BuildContext context) async {
-    final double recommendedCalories =
-        (aiResult['recommendedCalories'] as num).toDouble();
+Future<void> _saveAndContinue(BuildContext context) async {
+  final double recommendedCalories =
+      (aiResult['recommendedCalories'] as num).toDouble();
 
-    final UserGoal goal = UserGoal(
-      currentWeight: currentWeight,
-      goalWeight: goalWeight,
-      height: height,
-      age: age,
-      sex: sex,
-      activityLevel: activityLevel,
-      timelineInDays: timelineInDays,
-      maintenanceCalories: tdee,
-      recommendedCalories: recommendedCalories,
-    );
+  final UserGoal tempGoal = UserGoal(
+    currentWeight: currentWeight,
+    goalWeight: goalWeight,
+    height: height,
+    age: age,
+    sex: sex,
+    activityLevel: activityLevel,
+    timelineInDays: timelineInDays,
+    maintenanceCalories: tdee,
+    recommendedCalories: recommendedCalories,
+  );
 
-    await StorageService.saveGoal(goal);
-    await StorageService.addWeightLog(
-      WeightLog(weight: currentWeight, loggedAt: DateTime.now()),
+  // ← ADD THIS: Block if budget is too low
+  if (tempGoal.dailyCalorieBudget < 800) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text('⚠️ Goal Too Aggressive!'),
+        content: Text(
+          'Your daily calorie budget would be '
+          '${tempGoal.dailyCalorieBudget.toStringAsFixed(0)} kcal '
+          'which is not safe.\n\n'
+          'For healthy weight loss aim for:\n'
+          '• Minimum 1,200 kcal/day for women\n'
+          '• Minimum 1,500 kcal/day for men\n\n'
+          'Please go back and choose a longer timeline.',
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00C896),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () {
+              Navigator.pop(context); // close dialog
+              Navigator.pop(context); // go back to goal setup
+            },
+            child: const Text('Adjust My Goal'),
+          ),
+        ],
+      ),
     );
-
-    if (!context.mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const DashboardScreen()),
-    );
+    return; // stop saving
   }
+
+  // Save goal if budget is safe
+  final UserGoal goal = UserGoal(
+    currentWeight: currentWeight,
+    goalWeight: goalWeight,
+    height: height,
+    age: age,
+    sex: sex,
+    activityLevel: activityLevel,
+    timelineInDays: timelineInDays,
+    maintenanceCalories: tdee,
+    recommendedCalories: recommendedCalories,
+  );
+
+  await StorageService.saveGoal(goal);
+  await StorageService.addWeightLog(
+    WeightLog(weight: currentWeight, loggedAt: DateTime.now()),
+  );
+
+  if (!context.mounted) return;
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (_) => const DashboardScreen()),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -374,14 +427,22 @@ class AIRecommendationScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Center(
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Go Back & Adjust',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ),
-            ),
+  child: TextButton(
+    onPressed: () {
+      // Pop only back to Goal Setup Screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const GoalSetupScreen(),
+        ),
+      );
+    },
+    child: const Text(
+      'Go Back & Adjust',
+      style: TextStyle(color: Colors.grey),
+    ),
+  ),
+),
             const SizedBox(height: 20),
           ],
         ),
